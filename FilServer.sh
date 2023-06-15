@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # Installer og konfigurer Samba-serveren
-apt update
-apt install samba -y
+yum update
+yum install samba -y
 
 # Installer og konfigurer vsftpd FTP-serveren
-apt install vsftpd -y
+yum install vsftpd -y
 
 # Opret en delt mappe og konfigurer Samba
 mkdir /var/shared_folder
