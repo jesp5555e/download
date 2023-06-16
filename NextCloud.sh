@@ -1,49 +1,77 @@
 #!/bin/bash
 
-# Installer og konfigurer Apache-webserveren
-apt update
-apt install apache2 -y
+#Installer Nginx-pakken
+sudo apt update
+sudo apt install -y nginx
 
-# Installer og konfigurer PHP
-apt install php libapache2-mod-php -y
+#Opret en ny Nginx-serverblok til Nextcloud
+sudo tee /etc/nginx/sites-available/nextcloud > /dev/null <<EOT
+server {
+    listen 80;
+    server_name 192.168.224.4;
 
-# Hent og installer NextCloud
-apt install wget unzip -y
-wget https://download.nextcloud.com/server/releases/latest.zip
-unzip latest.zip -d /var/www/html/
-chown -R www-data:www-data /var/www/html/nextcloud/
-chmod -R 755 /var/www/html/nextcloud/
+    # Tilføj eventuelle SSL-konfigurationer her
 
-# Konfigurer Apache for at betjene NextCloud
-echo "Alias /nextcloud "/var/www/html/nextcloud/"
+    root /var/www/html/nextcloud;
 
-<Directory /var/www/html/nextcloud/>
-  Options +FollowSymlinks
-  AllowOverride All
+    location / {
+        try_files $uri $uri/ /index.php$request_uri;
+    }
 
- <IfModule mod_dav.c>
-  Dav off
- </IfModule>
+    location ~ ^/(?:.htaccess|data|config|dbstructure.xml|README) {
+        deny all;
+    }
 
- SetEnv HOME /var/www/html/nextcloud
- SetEnv HTTP_HOME /var/www/html/nextcloud
+    location ~ ^/(?:build|tests|config|lib|3rdparty|templates|data)/ {
+        deny all;
+    }
 
-</Directory>" >> /etc/apache2/sites-available/nextcloud.conf
+    location ~ ^/(?:.|autotest|occ|issue|indie|db|console) {
+        deny all;
+    }
 
-a2ensite nextcloud.conf
-a2enmod rewrite
-systemctl restart apache2
+    location ~ ^/(?:index|remote|public|cron|core/ajax/update|status|ocs/v[12]|updater/.+|ocs-provider/.+).php(?:$|/) {
+        fastcgi_split_path_info ^(.+?.php)(/.*)$;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_param HTTPS on;
+        fastcgi_param modHeadersAvailable true;
+        fastcgi_param front_controller_active true;
+        fastcgi_pass unix:/var/run/php/php7.4-fpm.sock;
+        fastcgi_intercept_errors on;
+        fastcgi_request_buffering off;
+    }
 
-# Konfigurer firewall-regler for web-serveren
-firewall-cmd --permanent --add-service=https
-firewall-cmd --permanent --add-service=http
-firewall-cmd --reload
+    location ~ ^/(?:updater|ocs-provider)(?:$|/) {
+        try_files $uri/ =404;
+        index index.php;
+    }
 
-# Konfigurer NextCloud til at bruge den specificerede databaseserver
-sed -i "s/'dbhost' => 'localhost',/'dbhost' => '192.168.224.2',/g" /var/www/html/nextcloud/config/config.php
-sed -i "s/'dbname' => 'nextcloud',/'dbname' => 'nextcloud',/g" /var/www/html/nextcloud/config/config.php
-sed -i "s/'dbuser' => 'nextcloud',/'dbuser' => 'nextcloud',/g" /var/www/html/nextcloud/config/config.php
-sed -i "s/'dbpassword' => 'password',/'dbpassword' => 'DATABASE_PASSWORD',/g" /var/www/html/nextcloud/config/config.php
+    location ~ .(?:css|js|woff2?|svg|gif|map)$ {
+        try_files $uri /index.php$request_uri;
+        add_header Cache-Control "public, max-age=15778463";
+        add_header X-Content-Type-Options nosniff;
+        add_header X-Frame-Options "SAMEORIGIN";
+        add_header X-XSS-Protection "1; mode=block";
+        add_header X-Robots-Tag none;
+        add_header X-Download-Options noopen;
+        add_header X-Permitted-Cross-Domain-Policies none;
+        access_log off;
+    }
 
-# Genstart Apache for at anvende ændringer
-systemctl restart apache2
+    location ~ .(?:png|html|ttf|ico|jpg|jpeg)$ {
+        try_files $uri /index.php$request_uri;
+        access_log off;
+    }
+}
+EOT
+
+#Aktivér Nextcloud-serverblokken
+sudo ln -s /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/
+
+#Fjern standardserverblokken
+sudo rm /etc/nginx/sites-enabled/default
+
+#Genstart Nginx-tjenesten
+sudo systemctl restart nginx
