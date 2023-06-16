@@ -1,11 +1,11 @@
 #!/bin/bash
 
 #Installer Nginx-pakken
-sudo apt update
-sudo apt install -y nginx
+yum update -y
+yum install -y nginx
 
 #Opret en ny Nginx-serverblok til Nextcloud
-sudo tee /etc/nginx/sites-available/nextcloud > /dev/null <<EOT
+tee /etc/nginx/sites-available/nextcloud > /dev/null <<EOT
 server {
     listen 80;
     server_name 192.168.224.4;
@@ -68,10 +68,10 @@ server {
 EOT
 
 #Aktivér Nextcloud-serverblokken
-sudo ln -s /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/
+ln -s /etc/nginx/sites-available/nextcloud /etc/nginx/sites-enabled/
 
 #Fjern standardserverblokken
-sudo rm /etc/nginx/sites-enabled/default
+rm /etc/nginx/sites-enabled/default
 
 #Genstart Nginx-tjenesten
-sudo systemctl restart nginx
+systemctl restart nginx
