@@ -42,7 +42,7 @@ services:
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
       - MYSQL_HOST=db
-	  - NEXTCLOUD_TRUSTED_DOMAINS=localhost,192.168.224.4
+      - NEXTCLOUD_TRUSTED_DOMAINS=localhost,192.168.224.4
 EOT
 
 cd /root/Nextcloud
