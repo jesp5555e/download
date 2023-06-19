@@ -3,6 +3,8 @@
 # update
 yum update -y
 
+yum install samba
+
 # Installer nødvendige pakker
 yum install httpd php php-mysqlnd mod_ssl yum-utils -y
 
