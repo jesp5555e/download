@@ -1,42 +1,57 @@
 #!/bin/bash
 
-# Installer og konfigurer Samba-serveren
-yum update- -y
-yum install samba -y
+# update
+yum update -y
 
-# Installer og konfigurer vsftpd FTP-serveren
-yum install vsftpd -y
+# Installer nødvendige pakker
+yum install httpd php php-mysqlnd mod_ssl yum-utils -y
 
-# Opret en delt mappe og konfigurer Samba
-mkdir /var/shared_folder
-chown nobody:nogroup /var/shared_folder
-chmod 770 /var/shared_folder
+# Tilføger et repo
+touch /etc/yum.repos.d/webmin.repo
+echo [Webmin] >> /etc/yum.repos.d/webmin.repo
+echo name=Webmin Distribution Neutral >> /etc/yum.repos.d/webmin.repo
+echo baseurl=https://download.webmin.com/download/yum >> /etc/yum.repos.d/webmin.repo
+echo enabled=1 >> /etc/yum.repos.d/webmin.repo
+echo gpgcheck=1 >> /etc/yum.repos.d/webmin.repo
+echo gpgkey=https://download.webmin.com/jcameron-key.asc >> /etc/yum.repos.d/webmin.repo
 
-echo "[shared_folder]" >> /etc/samba/smb.conf
-echo "path = /var/shared_folder" >> /etc/samba/smb.conf
-echo "valid users = togt.local" >> /etc/samba/smb.conf
-echo "read only = no" >> /etc/samba/smb.conf
-echo "guest ok = no" >> /etc/samba/smb.conf
-sudo sed -i 's/^#* *workgroup *=.*/   workgroup = YOUR_DOMAIN/g' /etc/samba/smb.conf
-sudo sed -i 's/^#* *security *=.*/   security = ads/g' /etc/samba/smb.conf
-sudo sed -i 's/^#* *realm *=.*/   realm = YOUR_REALM/g' /etc/samba/smb.conf
-sudo sed -i 's/^#* *encrypt *passwords *=.*/   encrypt passwords = yes/g' /etc/samba/smb.conf
-sudo sed -i 's/^#* *map *to *guest *=.*/   map to guest = Bad User/g' /etc/samba/smb.conf
+# Importer det nyge repo
+rpm --import https://download.webmin.com/jcameron-key.asc
 
-# Konfigurer vsftpd
-echo "local_enable=YES" >> /etc/vsftpd.conf
-echo "write_enable=YES" >> /etc/vsftpd.conf
-echo "local_umask=022" >> /etc/vsftpd.conf
-echo "chroot_local_user=YES" >> /etc/vsftpd.conf
-echo "allow_writeable_chroot=YES" >> /etc/vsftpd.conf
+# Installer webmin
+yum install webmin -y
 
-# Genstart Samba-tjenesten for at anvende konfigurationsændringer
-systemctl restart smb
+# Start webmin-tjenesten
+systemctl start webmin
+systemctl enable webmin
 
-# Genstart vsftpd-tjenesten for at anvende konfigurationsændringer
-systemctl restart vsftpd
+# Company details selvsigneret SSL-certifikat
+country=DK
+state=Sjaelland
+locality=Keldby
+organization=Keldby Technology
+organizationalunit=IT
+email=mail@kbytech.dom
+
+# Generer selvsigneret SSL-certifikat
+mkdir /etc/httpd/ssl
+openssl req -new -x509 -nodes -days 365 -out /etc/httpd/ssl/server.crt -keyout /etc/httpd/ssl/server.key -subj "/C=$country/ST=$state/L=$locality/O=$organization/OU=$organizationalunit/CN=$commonname/emailAddress=$email"
+
+# Konfigurer Apache til at bruge SSL
+echo "<VirtualHost *:443>" >> /etc/httpd/conf/httpd.conf
+echo "SSLEngine on" >> /etc/httpd/conf/httpd.conf
+echo "SSLCertificateFile /etc/httpd/ssl/server.crt" >> /etc/httpd/conf/httpd.conf
+echo "SSLCertificateKeyFile /etc/httpd/ssl/server.key" >> /etc/httpd/conf/httpd.conf
+echo "</VirtualHost>" >> /etc/httpd/conf/httpd.conf
+
+# Start Apache-tjenesten
+systemctl enable httpd
+systemctl start httpd
+
 
 # Konfigurer firewall-regler for webmail-serveren
+firewall-cmd --permanent --add-service=https
+firewall-cmd --permanent --add-service=http
 firewall-cmd --permanent --add-port=21/tcp
 firewall-cmd --permanent --add-service=ftp
 firewall-cmd --permanent --add-service=samba
