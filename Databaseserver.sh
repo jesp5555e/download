@@ -22,6 +22,8 @@ systemctl enable mariadb
 # Konfigurer MariaDB
 mysql -u root -e "CREATE DATABASE roundcubemail;"
 mysql -u root -e "GRANT ALL PRIVILEGES ON roundcubemail.* TO 'roundcube'@'192.168.244.7' IDENTIFIED BY 'Kode1234!';"
+mysql -u root -e "CREATE DATABASE TT_Kunde;"
+mysql -u root -e "GRANT ALL PRIVILEGES ON .* TO 'admin'@'%' IDENTIFIED BY 'Kode1234!';"
 mysql -u root -e "FLUSH PRIVILEGES;"
 
 # Aktivér fjernadgang til MariaDB-serveren
