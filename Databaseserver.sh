@@ -16,18 +16,16 @@ firewall-cmd --reload
 yum install mariadb-server -y
 
 # Start MariaDB-tjenesten
-service mariadb start
+systemctl start mariadb
+systemctl enable mariadb
 
 # Konfigurer MariaDB
 mysql -u root -e "CREATE DATABASE roundcubemail;"
 mysql -u root -e "GRANT ALL PRIVILEGES ON roundcubemail.* TO 'roundcube'@'192.168.244.7' IDENTIFIED BY 'Kode1234!';"
-mysql -u root -e "CREATE DATABASE nextcloud;"
-mysql -u root -e "GRANT ALL ON nextcloud.* TO 'nextcloud'@'192.168.224.5' IDENTIFIED BY 'password';"
 mysql -u root -e "FLUSH PRIVILEGES;"
 
 # Aktivér fjernadgang til MariaDB-serveren
 sed -i 's/bind-address.*/bind-address = 192.168.224.2/' /etc/mysql/mariadb.conf.d/50-server.cnf 
 # Genstart MariaDB-tjenesten
-service mariadb restart
-
+systemctl restart mariadb
 echo "Database server setup completed."
